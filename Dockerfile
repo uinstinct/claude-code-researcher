@@ -18,6 +18,9 @@ RUN apt-get install -y openssh-server && \
 # Install git, curl, build-essential
 RUN apt update && apt install -y git curl build-essential
 
+# Add ~/.local/bin to path
+RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+
 # Install claude code
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
