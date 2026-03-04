@@ -1,0 +1,7 @@
+services:
+  claude-code-researcher:
+    build: .
+    ports:
+      - "2026:22"
+    restart: unless-stopped
+    attach: false
