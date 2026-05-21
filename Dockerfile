@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 # set TZ to prevent timezone questions in installation
 ENV TZ=UTC
