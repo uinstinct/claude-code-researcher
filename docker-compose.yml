@@ -3,6 +3,6 @@ services:
     build: .
     container_name: ccr
     ports:
-      - "2026:22"
+      - "3333:3333"
     restart: unless-stopped
     attach: false
