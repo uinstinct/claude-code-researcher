@@ -62,7 +62,7 @@ jobs:
             echo "All toolchains verified for happy."
           '
 
-      - name: Verify sudo capability for 'happy'
+      - name: Verify passwordless sudo for 'happy'
         run: |
           docker run --rm -u happy ccr-toolchain:test bash -ec '
             echo "::group::happy is in sudo group"
@@ -70,12 +70,12 @@ jobs:
             id -nG happy | grep -qw sudo || { echo "happy is NOT in sudo group"; exit 1; }
             echo "::endgroup::"
 
-            echo "::group::sudo requires a password (no passwordless sudo)"
-            # Runs AS happy: non-interactive sudo must fail because a password is required
-            if sudo -n true 2>/dev/null; then
-              echo "ERROR: happy has passwordless sudo, expected password-protected"; exit 1
+            echo "::group::sudo runs without a password prompt"
+            # Runs AS happy: non-interactive sudo must succeed because no password is required
+            if ! sudo -n true 2>/dev/null; then
+              echo "ERROR: happy does NOT have passwordless sudo, expected NOPASSWD"; exit 1
             fi
-            echo "OK: sudo is password-protected"
+            echo "OK: sudo is passwordless (NOPASSWD)"
             echo "::endgroup::"
           '
 

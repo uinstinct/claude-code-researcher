@@ -38,10 +38,15 @@ RUN apt-get update && apt-get install -y sudo && \
 RUN echo 'root:password' | chpasswd
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
-# Create a non-root user 'happy' with (password-protected) sudo capabilities
+# Create a non-root user 'happy' with passwordless sudo capabilities
 RUN useradd -m -s /bin/bash happy && \
     echo 'happy:password' | chpasswd && \
-    usermod -aG sudo happy
+    usermod -aG sudo happy && \
+    # Allow 'happy' to run sudo without a password prompt
+    echo 'happy ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/happy && \
+    chmod 0440 /etc/sudoers.d/happy && \
+    # Validate sudoers syntax at build time (fails the build if malformed)
+    visudo -cf /etc/sudoers.d/happy
 
 # Everything below installs the dev toolchain for 'happy' only (not root)
 USER happy
