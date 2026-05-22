@@ -15,8 +15,10 @@ docker exec -it -u happy ccr bash
 
 ```bash
 ssh -p 2222 happy@localhost
-# when prompted for password, just hit `Enter`
+# when prompted for password, type `password`
 ```
+
+note: you might need to add `ssh-keygen -R "[localhost]:2222"` to the host machine so that it access that docker server
 
 ## project development
 
