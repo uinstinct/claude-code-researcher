@@ -22,10 +22,10 @@ RUN apt update && apt install -y git curl build-essential
 RUN apt-get update && apt-get install -y python3 python3-pip python3-venv && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Golang
-ENV GO_VERSION=1.23.4
+# Install Golang (latest stable, resolved at build time)
 RUN ARCH=$(dpkg --print-architecture) && \
-    curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz && \
+    GO_VERSION=$(curl -fsSL "https://go.dev/VERSION?m=text" | head -n1) && \
+    curl -fsSL "https://go.dev/dl/${GO_VERSION}.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz && \
     tar -C /usr/local -xzf /tmp/go.tar.gz && \
     rm /tmp/go.tar.gz
 ENV PATH="/usr/local/go/bin:${PATH}"
