@@ -22,7 +22,7 @@ RUN apt update && apt install -y git curl build-essential
 RUN apt-get update && apt-get install -y python3 python3-pip python3-venv && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Golang (latest stable, resolved at build time)
+# Install Golang (latest stable, resolved at build time) -- system-wide
 RUN ARCH=$(dpkg --print-architecture) && \
     GO_VERSION=$(curl -fsSL "https://go.dev/VERSION?m=text" | head -n1) && \
     curl -fsSL "https://go.dev/dl/${GO_VERSION}.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz && \
@@ -30,13 +30,30 @@ RUN ARCH=$(dpkg --print-architecture) && \
     rm /tmp/go.tar.gz
 ENV PATH="/usr/local/go/bin:${PATH}"
 
-# Install Rust via rustup
-ENV RUSTUP_HOME=/root/.rustup CARGO_HOME=/root/.cargo
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
-ENV PATH="/root/.cargo/bin:${PATH}"
+# Install sudo
+RUN apt-get update && apt-get install -y sudo && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install nvm (Node Version Manager) and the latest LTS Node.js
-ENV NVM_DIR=/root/.nvm
+# Set root password and allow root login (Optional, not recommended for production)
+RUN echo 'root:password' | chpasswd
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+# Create a non-root user 'happy' with (password-protected) sudo capabilities
+RUN useradd -m -s /bin/bash happy && \
+    echo 'happy:password' | chpasswd && \
+    usermod -aG sudo happy
+
+# Everything below installs the dev toolchain for 'happy' only (not root)
+USER happy
+WORKDIR /home/happy
+ENV HOME=/home/happy
+
+# Install Rust via rustup (into happy's home)
+ENV RUSTUP_HOME=/home/happy/.rustup CARGO_HOME=/home/happy/.cargo
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+
+# Install nvm (Node Version Manager) and the latest LTS Node.js (into happy's home)
+ENV NVM_DIR=/home/happy/.nvm
 RUN mkdir -p $NVM_DIR && \
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && \
     . "$NVM_DIR/nvm.sh" && nvm install --lts && nvm alias default 'lts/*'
@@ -44,18 +61,15 @@ RUN mkdir -p $NVM_DIR && \
 # Install uv (Python package/project manager)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Add ~/.local/bin to path
-RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-ENV PATH="/root/.local/bin:${PATH}"
+# Add ~/.local/bin and ~/.cargo/bin to path for interactive shells
+RUN echo 'export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"' >> ~/.bashrc
+ENV PATH="/home/happy/.cargo/bin:/home/happy/.local/bin:${PATH}"
 
-# Install claude code
+# Install claude code (into happy's home)
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# Create a user and set password (Example: user/password)
-RUN echo 'root:password' | chpasswd
-
-# Allow root login (Optional, not recommended for production)
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+# Switch back to root so sshd can start the daemon
+USER root
 
 # Expose port 22
 EXPOSE 22

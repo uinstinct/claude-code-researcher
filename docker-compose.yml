@@ -1,6 +1,7 @@
 services:
   claude-code-researcher:
     build: .
+    container_name: ccr
     ports:
       - "2026:22"
     restart: unless-stopped

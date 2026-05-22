@@ -26,10 +26,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Verify toolchains
+      - name: Verify toolchains (as user 'happy')
         run: |
-          docker run --rm ccr-toolchain:test bash -ec '
-            echo "::group::Go"
+          docker run --rm -u happy -e HOME=/home/happy ccr-toolchain:test bash -lc '
+            echo "::group::Go (system-wide)"
             go version
             echo "::endgroup::"
 
@@ -48,12 +48,56 @@ jobs:
             echo "::endgroup::"
 
             echo "::group::nvm & Node"
-            export NVM_DIR=/root/.nvm
+            export NVM_DIR=/home/happy/.nvm
             . "$NVM_DIR/nvm.sh"
             nvm --version
             node --version
             npm --version
             echo "::endgroup::"
 
-            echo "All toolchains verified."
+            echo "::group::claude code"
+            claude --version
+            echo "::endgroup::"
+
+            echo "All toolchains verified for happy."
+          '
+
+      - name: Verify sudo capability for 'happy'
+        run: |
+          docker run --rm -u happy ccr-toolchain:test bash -ec '
+            echo "::group::happy is in sudo group"
+            id -nG happy
+            id -nG happy | grep -qw sudo || { echo "happy is NOT in sudo group"; exit 1; }
+            echo "::endgroup::"
+
+            echo "::group::sudo requires a password (no passwordless sudo)"
+            # Runs AS happy: non-interactive sudo must fail because a password is required
+            if sudo -n true 2>/dev/null; then
+              echo "ERROR: happy has passwordless sudo, expected password-protected"; exit 1
+            fi
+            echo "OK: sudo is password-protected"
+            echo "::endgroup::"
+          '
+
+      - name: Verify dev toolchain is installed under happy, not root
+        run: |
+          docker run --rm ccr-toolchain:test bash -ec '
+            fail=0
+
+            echo "::group::Not installed under /root"
+            for p in /root/.cargo /root/.rustup /root/.nvm /root/.local/bin/claude; do
+              if [ -e "$p" ]; then echo "ERROR: $p exists (should be happy-only)"; fail=1; fi
+            done
+            echo "::endgroup::"
+
+            echo "::group::Installed under /home/happy and owned by happy"
+            for p in /home/happy/.cargo/bin/cargo /home/happy/.rustup /home/happy/.nvm /home/happy/.local/bin/uv /home/happy/.local/bin/claude; do
+              if [ ! -e "$p" ]; then echo "ERROR: $p is missing"; fail=1; continue; fi
+              owner=$(stat -c "%U" "$p")
+              if [ "$owner" != "happy" ]; then echo "ERROR: $p owned by $owner, expected happy"; fail=1; fi
+            done
+            echo "::endgroup::"
+
+            [ "$fail" -eq 0 ] && echo "OK: dev toolchain is installed for happy only."
+            exit $fail
           '
