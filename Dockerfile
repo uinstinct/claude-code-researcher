@@ -45,7 +45,7 @@ RUN mkdir -p $NVM_DIR && \
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Add ~/.local/bin to path
-RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 ENV PATH="/root/.local/bin:${PATH}"
 
 # Install claude code
