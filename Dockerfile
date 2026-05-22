@@ -38,9 +38,16 @@ RUN apt-get update && apt-get install -y sudo && \
 RUN echo 'root:password' | chpasswd
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
-# Create a non-root user 'happy' with passwordless sudo capabilities
+# Allow passwordless (empty-password) SSH logins -- local-only convenience, NOT for production
+RUN sed -i 's/#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#\?PermitEmptyPasswords.*/PermitEmptyPasswords yes/' /etc/ssh/sshd_config && \
+    grep -q '^PermitEmptyPasswords' /etc/ssh/sshd_config || echo 'PermitEmptyPasswords yes' >> /etc/ssh/sshd_config && \
+    # PAM must also accept empty passwords (add 'nullok' to pam_unix if not already present)
+    sed -i '/pam_unix.so/ { /nullok/! s/pam_unix.so/pam_unix.so nullok/ }' /etc/pam.d/common-auth
+
+# Create a non-root user 'happy' with an empty password and passwordless sudo capabilities
 RUN useradd -m -s /bin/bash happy && \
-    echo 'happy:password' | chpasswd && \
+    passwd -d happy && \
     usermod -aG sudo happy && \
     # Allow 'happy' to run sudo without a password prompt
     echo 'happy ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/happy && \

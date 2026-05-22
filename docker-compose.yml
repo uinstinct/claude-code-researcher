@@ -4,5 +4,6 @@ services:
     container_name: ccr
     ports:
       - "3333:3333"
+      - "2222:22"
     restart: unless-stopped
     attach: false
